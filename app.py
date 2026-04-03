@@ -23,7 +23,7 @@ GOAL_WIDTH = 7.32
 GOAL_HEIGHT = 2.44
 
 # ==========================
-# Data Setup (agora com goal_x / goal_y)
+# Data Setup
 # type, x, y, xg, goal_x, goal_y, video
 # ==========================
 matches_data = {
@@ -47,26 +47,27 @@ for match_name, events in matches_data.items():
         columns=["type", "x", "y", "xg", "goal_x", "goal_y", "video"]
     )
 
-# All games combined
 df_all = pd.concat(dfs_by_match.values(), ignore_index=True)
 full_data = {"All shots": df_all}
 full_data.update(dfs_by_match)
 
 # ==========================
-# Style (parecido com seu shotmap)
+# Style
 # ==========================
 def get_style(result_type: str, has_video: bool):
     t = (result_type or "").strip().upper()
     alpha = 0.95 if has_video else 0.85
 
     if t == "GOL":
-        return "*", (239/255, 71/255, 111/255, alpha), 1.5  # #EF476F
+        return "*", (239 / 255, 71 / 255, 111 / 255, alpha), 1.5
     if t in ("A GOL", "NO ALVO"):
-        return "h", (6/255, 214/255, 160/255, alpha), 1.5   # #06D6A0
+        return "h", (6 / 255, 214 / 255, 160 / 255, alpha), 1.5
     if t == "FORA":
-        return "o", (255/255, 209/255, 102/255, alpha), 1.5 # #FFD166
-    if t == "BLOQUEADO":
-        return "s", (17/255, 138/255, 178/255, alpha), 1.5  # #118AB2
+        return "o", (255 / 255, 209 / 255, 102 / 255, alpha), 1.5
+    if t in ("BLOQUEADO", "BLOCK"):
+        return "s", (17 / 255, 138 / 255, 178 / 255, alpha), 1.5
+    if t == "TRAVE":
+        return "D", (1, 1, 1, alpha), 1.5
 
     return "o", (0.6, 0.6, 0.6, alpha), 1.2
 
@@ -74,19 +75,17 @@ def size_from_xg(xg: float, scale: float = 1400.0):
     return (float(xg) * scale) + 60
 
 # ==========================
-# Goal chart (mesmo visual do seu código)
+# Goal chart
 # ==========================
 def draw_goal(selected_event: pd.Series | None):
     fig, ax = plt.subplots(figsize=(8, 4))
     fig.patch.set_facecolor("#0e0e0e")
     ax.set_facecolor("#0e0e0e")
 
-    # goal frame
     ax.plot([0, GOAL_WIDTH], [GOAL_HEIGHT, GOAL_HEIGHT], color="white", lw=3)
     ax.plot([0, 0], [0, GOAL_HEIGHT], color="white", lw=3)
     ax.plot([GOAL_WIDTH, GOAL_WIDTH], [0, GOAL_HEIGHT], color="white", lw=3)
 
-    # 3x3 grid
     x1 = GOAL_WIDTH / 3
     x2 = 2 * GOAL_WIDTH / 3
     y1 = GOAL_HEIGHT / 3
@@ -96,7 +95,6 @@ def draw_goal(selected_event: pd.Series | None):
     ax.plot([0, GOAL_WIDTH], [y1, y1], color="white", alpha=0.2)
     ax.plot([0, GOAL_WIDTH], [y2, y2], color="white", alpha=0.2)
 
-    # limits/axes
     ax.set_xlim(-0.5, GOAL_WIDTH + 0.5)
     ax.set_ylim(0, GOAL_HEIGHT + 0.5)
     ax.set_xticks([])
@@ -106,7 +104,6 @@ def draw_goal(selected_event: pd.Series | None):
 
     ax.set_title("Goal View (Shot Placement)", color="white")
 
-    # plot selected event shot placement
     if selected_event is not None:
         gx = selected_event.get("goal_x")
         gy = selected_event.get("goal_y")
@@ -119,8 +116,10 @@ def draw_goal(selected_event: pd.Series | None):
                 c, m = "#06D6A0", "h"
             elif t == "FORA":
                 c, m = "#FFD166", "o"
-            elif t == "BLOQUEADO":
+            elif t in ("BLOQUEADO", "BLOCK"):
                 c, m = "#118AB2", "s"
+            elif t == "TRAVE":
+                c, m = "#FFFFFF", "D"
             else:
                 c, m = "#999999", "o"
 
@@ -133,9 +132,6 @@ def draw_goal(selected_event: pd.Series | None):
                 linewidth=1.5,
                 zorder=3
             )
-        else:
-            # sem coords do gol: não plota nada
-            pass
 
     plt.tight_layout()
     return fig
@@ -160,16 +156,16 @@ df = df_base[df_base["type"].isin(selected_results)].copy()
 # ==========================
 # Main Layout
 # ==========================
-col_map, col_panel = st.columns([1, 1])
+col_left, col_right = st.columns([1.2, 1])
 
-with col_map:
+with col_left:
     st.subheader("Interactive Shot Map")
 
     pitch = Pitch(pitch_type="statsbomb", pitch_color="#0e0e0e", line_color="#e0e0e0")
     fig, ax = pitch.draw(figsize=(10, 7))
 
     for _, row in df.iterrows():
-        has_vid = row["video"] is not None
+        has_vid = pd.notna(row["video"]) and str(row["video"]).strip() != ""
         marker, color, lw = get_style(row["type"], has_vid)
 
         pitch.scatter(
@@ -183,7 +179,6 @@ with col_map:
             zorder=3
         )
 
-    # Legend
     legend_elements = [
         Line2D([0], [0], marker='*', color='none', label='Gol',
                markerfacecolor="#EF476F", markeredgecolor="#ffffff", markersize=11),
@@ -193,6 +188,8 @@ with col_map:
                markerfacecolor="#FFD166", markeredgecolor="#ffffff", markersize=9),
         Line2D([0], [0], marker='s', color='none', label='Bloqueado',
                markerfacecolor="#118AB2", markeredgecolor="#ffffff", markersize=9),
+        Line2D([0], [0], marker='D', color='none', label='Trave',
+               markerfacecolor="#FFFFFF", markeredgecolor="#ffffff", markersize=8),
     ]
     legend = ax.legend(
         handles=legend_elements,
@@ -213,15 +210,14 @@ with col_map:
     for text in legend.get_texts():
         text.set_color("#eaeaea")
 
-    # Convert plot to image for coordinate tracking (IGUAL ao seu Duel Map)
     buf = BytesIO()
     plt.savefig(buf, format="png", dpi=100, bbox_inches="tight")
     buf.seek(0)
     img_obj = Image.open(buf)
-    click = streamlit_image_coordinates(img_obj, width=700)
+    click = streamlit_image_coordinates(img_obj, width=720)
 
 # ==========================
-# Interaction Logic (IGUAL ao seu Duel Map)
+# Interaction Logic
 # ==========================
 selected_event = None
 
@@ -244,17 +240,16 @@ if click is not None:
         selected_event = candidates.loc[candidates["dist"].idxmin()]
 
 # ==========================
-# Panel: Video + Goal chart
+# Left column: video below map
 # ==========================
-with col_panel:
-    st.subheader("Event Details")
+with col_left:
+    st.divider()
+    st.subheader("Video")
 
-    if selected_event is not None:
-        st.success(f"**Selected Event:** {selected_event['type']}")
-        st.info(f"**Position:** X: {selected_event['x']:.2f}, Y: {selected_event['y']:.2f}")
-        st.write(f"**xG:** {selected_event['xg']:.2f}")
-
-        if selected_event["video"]:
+    if selected_event is None:
+        st.info("Select a marker on the pitch to view the video.")
+    else:
+        if pd.notna(selected_event["video"]) and str(selected_event["video"]).strip() != "":
             try:
                 st.video(selected_event["video"])
             except Exception:
@@ -262,10 +257,20 @@ with col_panel:
         else:
             st.warning("Não há vídeo carregado para este evento.")
 
+# ==========================
+# Right column: details + goal view
+# ==========================
+with col_right:
+    st.subheader("Event Details")
+
+    if selected_event is not None:
+        st.success(f"**Selected Event:** {selected_event['type']}")
+        st.info(f"**Position:** X: {selected_event['x']:.2f}, Y: {selected_event['y']:.2f}")
+        st.write(f"**xG:** {selected_event['xg']:.2f}")
+
         st.divider()
         st.subheader("Shot Placement (Goal View)")
 
-        # Se não tem coords de gol, avisa e mostra o gol vazio mesmo assim (opcional)
         if pd.isna(selected_event.get("goal_x")) or pd.isna(selected_event.get("goal_y")):
             st.warning("Este evento não possui coordenadas do gol (goal_x/goal_y).")
 
