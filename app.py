@@ -28,14 +28,14 @@ GOAL_HEIGHT = 2.44
 # ==========================
 matches_data = {
     "Vs Los Angeles": [
-        ("A gol", 109.70, 23.88, 0.18, 5.32, 0.19, "videos/1 - LA.mp4"),
+        ("On Target", 109.70, 23.88, 0.18, 5.32, 0.19, "videos/1 - LA.mp4"),
     ],
     "Vs Slavia Praha": [
-        ("Fora", 104.55, 23.88, 0.07, None, None, "videos/1 - SP.mp4"),
+        ("Off Target", 104.55, 23.88, 0.07, None, None, "videos/1 - SP.mp4"),
     ],
     "Vs Sockers": [
-        ("A gol", 94.91, 30.52, 0.10, 0.86, 0.51, "videos/2 - SK.mp4"),
-        ("Gol", 108.04, 43.16, 0.35, 2.22, 0.11, "videos/GOL - SK.mp4"),
+        ("On Target", 94.91, 30.52, 0.10, 0.86, 0.51, "videos/2 - SK.mp4"),
+        ("Goal", 108.04, 43.16, 0.35, 2.22, 0.11, "videos/GOL - SK.mp4"),
     ],
 }
 
@@ -48,7 +48,7 @@ for match_name, events in matches_data.items():
     )
 
 df_all = pd.concat(dfs_by_match.values(), ignore_index=True)
-full_data = {"All shots": df_all}
+full_data = {"All Shots": df_all}
 full_data.update(dfs_by_match)
 
 # ==========================
@@ -58,15 +58,15 @@ def get_style(result_type: str, has_video: bool):
     t = (result_type or "").strip().upper()
     alpha = 0.95 if has_video else 0.85
 
-    if t == "GOL":
+    if t == "GOAL":
         return "*", (239 / 255, 71 / 255, 111 / 255, alpha), 1.5
-    if t in ("A GOL", "NO ALVO"):
+    if t in ("ON TARGET",):
         return "h", (6 / 255, 214 / 255, 160 / 255, alpha), 1.5
-    if t == "FORA":
+    if t == "OFF TARGET":
         return "o", (255 / 255, 209 / 255, 102 / 255, alpha), 1.5
-    if t in ("BLOQUEADO", "BLOCK"):
+    if t in ("BLOCKED",):
         return "s", (17 / 255, 138 / 255, 178 / 255, alpha), 1.5
-    if t == "TRAVE":
+    if t == "POST":
         return "D", (1, 1, 1, alpha), 1.5
 
     return "o", (0.6, 0.6, 0.6, alpha), 1.2
@@ -110,15 +110,15 @@ def draw_goal(selected_event: pd.Series | None):
 
         if pd.notna(gx) and pd.notna(gy):
             t = (selected_event.get("type") or "").strip().upper()
-            if t == "GOL":
+            if t == "GOAL":
                 c, m = "#EF476F", "*"
-            elif t in ("A GOL", "NO ALVO"):
+            elif t == "ON TARGET":
                 c, m = "#06D6A0", "h"
-            elif t == "FORA":
+            elif t == "OFF TARGET":
                 c, m = "#FFD166", "o"
-            elif t in ("BLOQUEADO", "BLOCK"):
+            elif t == "BLOCKED":
                 c, m = "#118AB2", "s"
-            elif t == "TRAVE":
+            elif t == "POST":
                 c, m = "#FFFFFF", "D"
             else:
                 c, m = "#999999", "o"
@@ -180,15 +180,15 @@ with col_left:
         )
 
     legend_elements = [
-        Line2D([0], [0], marker='*', color='none', label='Gol',
+        Line2D([0], [0], marker='*', color='none', label='Goal',
                markerfacecolor="#EF476F", markeredgecolor="#ffffff", markersize=11),
-        Line2D([0], [0], marker='h', color='none', label='A gol / No alvo',
+        Line2D([0], [0], marker='h', color='none', label='On Target',
                markerfacecolor="#06D6A0", markeredgecolor="#ffffff", markersize=9),
-        Line2D([0], [0], marker='o', color='none', label='Fora',
+        Line2D([0], [0], marker='o', color='none', label='Off Target',
                markerfacecolor="#FFD166", markeredgecolor="#ffffff", markersize=9),
-        Line2D([0], [0], marker='s', color='none', label='Bloqueado',
+        Line2D([0], [0], marker='s', color='none', label='Blocked',
                markerfacecolor="#118AB2", markeredgecolor="#ffffff", markersize=9),
-        Line2D([0], [0], marker='D', color='none', label='Trave',
+        Line2D([0], [0], marker='D', color='none', label='Post',
                markerfacecolor="#FFFFFF", markeredgecolor="#ffffff", markersize=8),
     ]
     legend = ax.legend(
@@ -255,7 +255,7 @@ with col_left:
             except Exception:
                 st.error(f"Video file not found: {selected_event['video']}")
         else:
-            st.warning("Não há vídeo carregado para este evento.")
+            st.warning("No video available for this event.")
 
 # ==========================
 # Right column: details + goal view
@@ -272,7 +272,7 @@ with col_right:
         st.subheader("Shot Placement (Goal View)")
 
         if pd.isna(selected_event.get("goal_x")) or pd.isna(selected_event.get("goal_y")):
-            st.warning("Este evento não possui coordenadas do gol (goal_x/goal_y).")
+            st.warning("This event does not have goal coordinates (goal_x/goal_y).")
 
         goal_fig = draw_goal(selected_event)
         st.pyplot(goal_fig, clear_figure=True)
